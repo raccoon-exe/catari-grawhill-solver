@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Catari Racoon Bot",
   "version": "0.0.1",
-  "description": "mcgrawhill auto bot",
+  "description": "bruhhh",
   "homepage_url": "https://github.com/raccoon-exe",
   "permissions": [
     "tabs",
@@ -11,6 +11,8 @@
   ],
   "host_permissions": [
     "https://learning.mheducation.com/*",
+    "https://newconnect.mheducation.com/*",
+    "https://connect.mheducation.com/*",
     "https://chatgpt.com/*",
     "https://gemini.google.com/*",
     "https://deepseek.chat/*"
@@ -28,7 +30,9 @@
   "content_scripts": [
     {
       "matches": [
-        "https://learning.mheducation.com/static/awd/*"
+        "https://learning.mheducation.com/static/awd/*",
+        "https://newconnect.mheducation.com/*",
+        "https://connect.mheducation.com/*"
       ],
       "js": [
         "racoon_claws/mheducation.js"

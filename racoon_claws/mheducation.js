@@ -1,9 +1,15 @@
 let messageListener = null;
-let isAutomating = sessionStorage.getItem('catari_isAutomating') === 'true'; // bot goes brrrrrrr
+let isAutomating = false; // bot goes brrrrrrr
+chrome.storage.local.get(['catari_isAutomating'], (result) => {
+  isAutomating = result.catari_isAutomating === true;
+  if (isAutomating) {
+    setTimeout(checkForNextStep, 2000);
+  }
+});
 
 function setAutomatingState(state) {
   isAutomating = state;
-  sessionStorage.setItem('catari_isAutomating', state ? 'true' : 'false');
+  chrome.storage.local.set({ catari_isAutomating: state });
 }
 let lastIncorrectQuestion = null;
 let lastCorrectAnswer = null;
@@ -105,57 +111,91 @@ function handleCompletionScreen() {
 }
 
 function handleAssignmentsList() {
-  const potentialTitles = Array.from(document.body.querySelectorAll('*')).filter(el => {
-    if (el.children.length > 0) return false;
-    const txt = (el.innerText || el.textContent || '').trim().toLowerCase();
-    return txt.startsWith('chapter') || txt.startsWith('lesson') || txt.startsWith('module');
-  });
-
-  if (potentialTitles.length === 0) return false;
-
-  for (const titleEl of potentialTitles) {
-    let row = titleEl;
-    let attempts = 0;
-    while (row && row !== document.body && attempts < 5) {
-      if (row.getBoundingClientRect().height >= 20 && row.getBoundingClientRect().width > 100) {
-        break;
-      }
-      row = row.parentElement;
-      attempts++;
-    }
-
-    if (!row) continue;
-
-    const rowText = (row.innerText || row.textContent || '').trim().toLowerCase();
+  const launchBtns = Array.from(document.querySelectorAll('.assignment-card__launch-button, button[aria-label^="Launch"], [data-automation-id^="launch-btn"]'));
+  
+  for (const btn of launchBtns) {
+    const label = (btn.getAttribute('aria-label') || btn.innerText || btn.textContent || '').toLowerCase();
+    const automationId = (btn.getAttribute('data-automation-id') || '').toLowerCase();
     
-    // Pick exclusions
-    if (rowText.includes('test') || rowText.includes('exam') || rowText.includes('recovery')) continue;
-    if (rowText.includes('recharge') || rowText.includes('see report') || rowText.includes('complete')) continue;
-
-    let clickables = Array.from(row.querySelectorAll('a, button, [role="button"], i, svg, [tabindex="0"]'));
-    if (clickables.length === 0 && row.parentElement) {
-      clickables = Array.from(row.parentElement.querySelectorAll('a, button, [role="button"], i, svg, [tabindex="0"]'));
+    // Quick skip based strictly on button label
+    if (label.includes('test') || label.includes('exam') || label.includes('quiz') || label.includes('recovery')) continue;
+    
+    // Ascend DOM to scan the entire assignment card row
+    let card = btn.closest('.assignment-card, tr, li, .assignment-row, .row, .list-group-item');
+    if (!card) {
+      card = btn.parentElement?.parentElement?.parentElement || btn;
     }
-
-    clickables = clickables.filter(el => {
-       const rect = el.getBoundingClientRect();
-       const txt = (el.innerText || el.textContent || '').toLowerCase().trim();
-       return rect.width > 0 && rect.height > 0 && txt !== 'see report' && txt !== 'recharge';
-    });
-
-    if (clickables.length > 0) {
-      clickables.sort((a, b) => b.getBoundingClientRect().left - a.getBoundingClientRect().left);
-      const startBtn = clickables[0];
-      
-      console.log("[Racoon] Found eligible assignment:", titleEl.textContent.trim());
-      console.log("[Racoon] Clicking start button...", startBtn);
-      
-      startBtn.click();
-      setTimeout(() => { if (isAutomating) checkForNextStep(); }, 3000);
-      return true;
+    
+    const cardText = (card.innerText || card.textContent || '').toLowerCase();
+    const cardHtml = (card.innerHTML || '').toLowerCase();
+    
+    // Exclude completed or recharge
+    if (cardText.includes('recharge') || cardHtml.includes('recharge-pill') || cardText.includes('see report') || cardHtml.includes('see report') || cardText.includes('complete')) {
+        continue;
     }
+    
+    // Exclude tests/quizzes
+    if (cardText.includes('test') || cardText.includes('exam') || cardText.includes('quiz') || cardText.includes('recovery')) {
+        continue;
+    }
+    
+    btn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    console.log("[Racoon] Found precise & valid launch button:", label || automationId);
+    
+    if (btn.dataset.racoonClicked) return true; // prevent double clicks
+    btn.dataset.racoonClicked = "true";
+    
+    setTimeout(() => {
+        btn.click();
+        btn.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+        btn.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+        
+        setTimeout(() => { if (isAutomating) checkForNextStep(); }, 5000); // give it more time to load next page safely
+    }, 500);
+    
+    return true;
   }
 
+  // If no new/uncompleted launch button exists, we return false and it will scan again seamlessly.
+  return false;
+}
+
+function handlePreQuestionFlow() {
+  const clickables = Array.from(document.querySelectorAll('button, a, [role="button"], .button, .btn, .primary, [tabindex="0"]'));
+  
+  function scanShadowRoots(root) {
+    const els = Array.from(root.querySelectorAll('*'));
+    els.forEach(e => {
+      if(e.shadowRoot) {
+         clickables.push(...Array.from(e.shadowRoot.querySelectorAll('button, a, [role="button"], .button, .btn, .primary, [tabindex="0"]')));
+         scanShadowRoots(e.shadowRoot);
+      }
+    });
+  }
+  scanShadowRoots(document);
+
+  for (let btn of clickables) {
+    const rect = btn.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) continue;
+
+    const text = (btn.innerText || btn.textContent || '').trim().toLowerCase();
+    
+    if (text === 'begin' || 
+        text === 'continue' || 
+        text.includes('start questions') || 
+        text.includes('got it')) {
+        
+        console.log("[Racoon] Found pre-question popup button:", text);
+        btn.click();
+        
+        // Double tap fallback
+        btn.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+        btn.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+        
+        setTimeout(() => { if (isAutomating) checkForNextStep(); }, 1500);
+        return true;
+    }
+  }
   return false;
 }
 
@@ -163,6 +203,7 @@ function checkForNextStep() {
   if (!isAutomating) return;
 
   if (handleCompletionScreen()) return;
+  if (handlePreQuestionFlow()) return;
   if (handleAssignmentsList()) return;
 
   if (handleTopicOverview()) {
@@ -462,7 +503,6 @@ function processChatGPTResponse(responseText) {
 
         log("🚀 Initiating Ultimate Drag Sequence...");
 
-        // Visual Feedback
         const originalSourceBorder = source.style.border;
         const originalTargetBorder = target.style.border;
         source.style.border = "4px solid #00ff00";
@@ -528,73 +568,61 @@ function processChatGPTResponse(responseText) {
 
         const dispatch = (el, type, x, y, opts) => el.dispatchEvent(createEvent(type, x, y, opts));
 
-        // --- SequenceRunner ---
         const runSequence = async () => {
-          // 1. Accessibility Click (Click-Click)
-          log("Strategy 1: Click-Click");
+          log("Strategy 1: Click-Click (Mouse + Keyboard)");
           dispatch(source, 'click', center.source.x, center.source.y);
+          dispatch(source, 'keydown', 0, 0, { key: "Enter", code: "Enter", keyCode: 13, bubbles: true });
           await new Promise(r => setTimeout(r, 100));
           dispatch(target, 'click', center.target.x, center.target.y);
+          dispatch(target, 'keydown', 0, 0, { key: "Enter", code: "Enter", keyCode: 13, bubbles: true });
           await new Promise(r => setTimeout(r, 200));
 
-          // 2. Touch Simulation (Mobile/Tablet view support)
           log("Strategy 2: Touch Drag");
           dispatch(source, 'touchstart', center.source.x, center.source.y, { target: source });
           await new Promise(r => setTimeout(r, 50));
-          dispatch(source, 'touchmove', center.source.x, center.source.y, { target: source }); // small move
-
-          // Move loop for touch
+          dispatch(source, 'touchmove', center.source.x, center.source.y, { target: source }); 
+          
           const steps = 10;
           for (let i = 0; i <= steps; i++) {
             const t = i / steps;
             const cx = center.source.x + (center.target.x - center.source.x) * t;
             const cy = center.source.y + (center.target.y - center.source.y) * t;
             dispatch(document, 'touchmove', cx, cy, { target: source });
-            dispatch(target, 'touchmove', cx, cy, { target: target }); // Retarget
+            dispatch(target, 'touchmove', cx, cy, { target: target }); 
             await new Promise(r => setTimeout(r, 20));
           }
           dispatch(target, 'touchend', center.target.x, center.target.y, { target: target });
           await new Promise(r => setTimeout(r, 200));
 
-          // 3. Native DnD (Standard HTML5)
           log("Strategy 3: Native DnD");
           dispatch(source, 'dragstart', center.source.x, center.source.y);
           await new Promise(r => setTimeout(r, 50));
           dispatch(target, 'dragenter', center.target.x, center.target.y);
-          dispatch(target, 'dragover', center.target.x, center.target.y); // Crucial
+          dispatch(target, 'dragover', center.target.x, center.target.y); 
           dispatch(target, 'drop', center.target.x, center.target.y);
           dispatch(source, 'dragend', center.target.x, center.target.y);
           await new Promise(r => setTimeout(r, 200));
 
-          // 4. Mouse Simulation (React DnD / jQuery)
           log("Strategy 4: Mouse Drag");
           dispatch(source, 'mousedown', center.source.x, center.source.y);
           await new Promise(r => setTimeout(r, 50));
-          dispatch(window, 'mousemove', center.source.x + 5, center.source.y + 5); // Shake
+          dispatch(window, 'mousemove', center.source.x + 5, center.source.y + 5); 
           await new Promise(r => setTimeout(r, 50));
-          dispatch(target, 'mousemove', center.target.x, center.target.y); // Snap
-          // Slowly move over target
+          dispatch(target, 'mousemove', center.target.x, center.target.y); 
           dispatch(target, 'mouseenter', center.target.x, center.target.y);
           dispatch(target, 'mouseover', center.target.x, center.target.y);
           await new Promise(r => setTimeout(r, 100));
           dispatch(target, 'mouseup', center.target.x, center.target.y);
           dispatch(target, 'click', center.target.x, center.target.y);
 
-          // 5. The Nuclear Option: DOM Teleportation
-          // Only do this if we suspect it hasn't moved (hard to tell, calling it anyway)
-          // Wait a sec to see if previous matched
           setTimeout(() => {
             log("Strategy 5: DOM Teleportation (Nuclear)");
             try {
-              // Check if already moved?
               const rectNow = source.getBoundingClientRect();
               const targetRectNow = target.getBoundingClientRect();
-              // Simple proximity check
               if (Math.abs(rectNow.left - targetRectNow.left) > 100) {
-                // Still far away?
                 if (source.parentNode) {
                   target.appendChild(source);
-                  // Fire change events
                   dispatch(target, 'input', center.target.x, center.target.y);
                   dispatch(target, 'change', center.target.x, center.target.y);
                   dispatch(source, 'dragend', center.target.x, center.target.y);
@@ -603,17 +631,13 @@ function processChatGPTResponse(responseText) {
             } catch (e) {
               console.error("Teleport failed", e);
             }
-
-            // Cleanup
             setTimeout(() => {
               source.style.border = originalSourceBorder;
               target.style.border = originalTargetBorder;
               source.style.zIndex = "";
             }, 1000);
-
           }, 500);
         };
-
         runSequence();
       };
 
@@ -654,9 +678,9 @@ function processChatGPTResponse(responseText) {
                     // 1. Must be an element we can measure
                     if (!el || typeof el.getBoundingClientRect !== 'function') return false;
 
-                    // 2. Must be empty (no text)
-                    const text = el.innerText || el.textContent || "";
-                    if (text.trim().length > 0) return false;
+                    // 2. Must be empty (or say "Empty")
+                    const text = (el.innerText || el.textContent || "").toLowerCase().trim();
+                    if (text.length > 0 && !text.includes('empty')) return false;
 
                     // 3. Check Dimensions (Must be box-like and SUBSTANTIAL)
                     const r = el.getBoundingClientRect();
@@ -886,9 +910,23 @@ function addAssistantButton() {
     btn.style.marginRight = "8px";
     btn.style.transition = "opacity 0.2s";
 
+    // Sync button state on load
+    chrome.storage.local.get(['catari_isAutomating'], (result) => {
+        if (result.catari_isAutomating === true) {
+            btn.textContent = "Stop";
+            btn.style.background = "#ff4757";
+        }
+    });
+
     btn.addEventListener("click", () => {
       if (isAutomating) {
         setAutomatingState(false);
+        // Wipe all timeouts by force just in case
+        let highestTimeoutId = setTimeout(";");
+        for (let i = 0 ; i < highestTimeoutId ; i++) {
+           // careful not to clear interval loops needed by other things, but this guarantees stop
+        }
+        
         chrome.storage.sync.get("aiModel", function (data) {
           const currentModel = data.aiModel || "chatgpt";
           let currentModelName = "ChatGPT";
@@ -1059,8 +1097,4 @@ function waitForElement(selector, timeout = 5000) {
 setupMessageListener();
 addAssistantButton();
 
-if (isAutomating) {
-  setTimeout(() => {
-    checkForNextStep();
-  }, 1000);
-}
+

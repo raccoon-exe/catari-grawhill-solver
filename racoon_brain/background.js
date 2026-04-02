@@ -57,7 +57,7 @@ async function focusTab(tabId) {
 
 async function findAndStoreTabs() {
   const mheTabs = await chrome.tabs.query({
-    url: "https://learning.mheducation.com/*",
+    url: "*://*.mheducation.com/*",
   });
   if (mheTabs.length > 0) {
     mheTabId = mheTabs[0].id;
@@ -151,7 +151,7 @@ async function processResponse(message) {
   try {
     if (!mheTabId) {
       const mheTabs = await chrome.tabs.query({
-        url: "https://learning.mheducation.com/*",
+        url: "*://*.mheducation.com/*",
       });
       if (mheTabs.length > 0) {
         mheTabId = mheTabs[0].id;
@@ -181,7 +181,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (sender.tab) {
     message.sourceTabId = sender.tab.id;
 
-    if (sender.tab.url.includes("learning.mheducation.com")) {
+    if (sender.tab.url.includes("mheducation.com")) {
       mheTabId = sender.tab.id;
       mheWindowId = sender.tab.windowId;
     } else if (sender.tab.url.includes("chatgpt.com")) {
