@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Catari Racoon</title>
+  <link rel="stylesheet" href="settings.css">
+</head>
+
+<body>
+  <div class="container">
+    <header>
+      <img src="../racoon_loot/icon.png" alt="Logo" class="logo">
+      <h1>Catari Racoon</h1>
+    </header>
+
+    <main>
+      <section>
+        <div class="section-title">Select the bot you want</div>
+        <div class="card">
+          <div class="ai-options">
+            <button id="chatgpt" class="model-button">
+              <div class="model-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z" />
+                </svg>
+              </div>
+              <h3>ChatGPT</h3>
+            </button>
+
+            <button id="gemini" class="model-button">
+              <div class="model-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 2L2 19h20L12 2zm0 3.27L18.06 17H5.94L12 5.27z" />
+                </svg>
+              </div>
+              <h3>Gemini</h3>
+            </button>
+
+            <button id="deepseek" class="model-button">
+              <div class="model-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                  <path
+                    d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z" />
+                </svg>
+              </div>
+              <h3>DeepSeek</h3>
+            </button>
+          </div>
+
+          <div id="status-container" class="status-bar">
+            <div class="status-indicator"></div>
+            <span id="status-message">Checking status...</span>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <a href="https://github.com/raccoon-exe" target="_blank"
+        style="text-decoration: none; color: inherit; font-weight: bold;">Catari Racoon v<span
+          id="current-version">2.0</span></a>
+      <div id="latest-version" style="display: none;"></div>
+      <div id="check-updates" style="display: none;"></div>
+      <div id="version-status" style="display: none;"></div>
+      <div id="footer-version" style="display: none;"></div>
+    </footer>
+  </div>
+  <script src="settings.js"></script>
+</body>
+
+</html>

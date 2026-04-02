@@ -1,0 +1,74 @@
+{
+  "manifest_version": 3,
+  "name": "Catari Racoon Bot",
+  "version": "0.0.1",
+  "description": "mcgrawhill auto bot",
+  "homepage_url": "https://github.com/raccoon-exe",
+  "permissions": [
+    "tabs",
+    "scripting",
+    "storage"
+  ],
+  "host_permissions": [
+    "https://learning.mheducation.com/*",
+    "https://chatgpt.com/*",
+    "https://gemini.google.com/*",
+    "https://deepseek.chat/*"
+  ],
+  "background": {
+    "service_worker": "racoon_brain/background.js"
+  },
+  "icons": {
+    "48": "racoon_loot/icon.png"
+  },
+  "action": {
+    "default_popup": "racoon_den/settings.html",
+    "default_icon": "racoon_loot/icon.png"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://learning.mheducation.com/static/awd/*"
+      ],
+      "js": [
+        "racoon_claws/mheducation.js"
+      ]
+    },
+    {
+      "matches": [
+        "https://chatgpt.com/*"
+      ],
+      "js": [
+        "racoon_claws/chatgpt.js"
+      ]
+    },
+    {
+      "matches": [
+        "https://gemini.google.com/*"
+      ],
+      "js": [
+        "racoon_claws/gemini.js"
+      ]
+    },
+    {
+      "matches": [
+        "https://chat.deepseek.com/*"
+      ],
+      "js": [
+        "racoon_claws/deepseek.js"
+      ]
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "racoon_den/settings.html",
+        "racoon_den/settings.css",
+        "racoon_den/settings.js"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
+    }
+  ]
+}
