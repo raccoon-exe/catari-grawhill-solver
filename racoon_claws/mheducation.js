@@ -1,5 +1,10 @@
 let messageListener = null;
-let isAutomating = false; // bot goes brrrrrrr
+let isAutomating = sessionStorage.getItem('catari_isAutomating') === 'true'; // bot goes brrrrrrr
+
+function setAutomatingState(state) {
+  isAutomating = state;
+  sessionStorage.setItem('catari_isAutomating', state ? 'true' : 'false');
+}
 let lastIncorrectQuestion = null;
 let lastCorrectAnswer = null;
 
@@ -74,7 +79,7 @@ function handleForcedLearning() {
         })
         .catch((error) => {
           console.error("Error in forced learning flow:", error);
-          isAutomating = false;
+          setAutomatingState(false);
         });
       return true;
     }
@@ -82,8 +87,83 @@ function handleForcedLearning() {
   return false;
 }
 
+// --- NEW LOGIC: Chapter auto-progression ---
+function handleCompletionScreen() {
+  const backBtns = Array.from(document.querySelectorAll('a, button, [role="button"], div.button-primary'));
+  const backBtn = backBtns.find(b => {
+    const txt = (b.innerText || b.textContent || '').trim().toLowerCase();
+    return txt === 'back to assignments' || txt.includes('back to assignments');
+  });
+
+  if (backBtn) {
+    console.log("[Racoon] Found 'Back to Assignments' button. Clicking it to go to list.");
+    backBtn.click();
+    setTimeout(() => { if (isAutomating) checkForNextStep(); }, 3000);
+    return true;
+  }
+  return false;
+}
+
+function handleAssignmentsList() {
+  const potentialTitles = Array.from(document.body.querySelectorAll('*')).filter(el => {
+    if (el.children.length > 0) return false;
+    const txt = (el.innerText || el.textContent || '').trim().toLowerCase();
+    return txt.startsWith('chapter') || txt.startsWith('lesson') || txt.startsWith('module');
+  });
+
+  if (potentialTitles.length === 0) return false;
+
+  for (const titleEl of potentialTitles) {
+    let row = titleEl;
+    let attempts = 0;
+    while (row && row !== document.body && attempts < 5) {
+      if (row.getBoundingClientRect().height >= 20 && row.getBoundingClientRect().width > 100) {
+        break;
+      }
+      row = row.parentElement;
+      attempts++;
+    }
+
+    if (!row) continue;
+
+    const rowText = (row.innerText || row.textContent || '').trim().toLowerCase();
+    
+    // Pick exclusions
+    if (rowText.includes('test') || rowText.includes('exam') || rowText.includes('recovery')) continue;
+    if (rowText.includes('recharge') || rowText.includes('see report') || rowText.includes('complete')) continue;
+
+    let clickables = Array.from(row.querySelectorAll('a, button, [role="button"], i, svg, [tabindex="0"]'));
+    if (clickables.length === 0 && row.parentElement) {
+      clickables = Array.from(row.parentElement.querySelectorAll('a, button, [role="button"], i, svg, [tabindex="0"]'));
+    }
+
+    clickables = clickables.filter(el => {
+       const rect = el.getBoundingClientRect();
+       const txt = (el.innerText || el.textContent || '').toLowerCase().trim();
+       return rect.width > 0 && rect.height > 0 && txt !== 'see report' && txt !== 'recharge';
+    });
+
+    if (clickables.length > 0) {
+      clickables.sort((a, b) => b.getBoundingClientRect().left - a.getBoundingClientRect().left);
+      const startBtn = clickables[0];
+      
+      console.log("[Racoon] Found eligible assignment:", titleEl.textContent.trim());
+      console.log("[Racoon] Clicking start button...", startBtn);
+      
+      startBtn.click();
+      setTimeout(() => { if (isAutomating) checkForNextStep(); }, 3000);
+      return true;
+    }
+  }
+
+  return false;
+}
+
 function checkForNextStep() {
   if (!isAutomating) return;
+
+  if (handleCompletionScreen()) return;
+  if (handleAssignmentsList()) return;
 
   if (handleTopicOverview()) {
     return;
@@ -101,7 +181,11 @@ function checkForNextStep() {
         type: "sendQuestionToChatGPT",
         question: qData,
       });
+    } else {
+      setTimeout(checkForNextStep, 2000);
     }
+  } else {
+    setTimeout(checkForNextStep, 2000);
   }
 }
 
@@ -738,13 +822,13 @@ function processChatGPTResponse(responseText) {
                 })
                 .catch((error) => {
                   console.error("Automation error:", error);
-                  isAutomating = false;
+                  setAutomatingState(false);
                 });
             }, 1000);
           })
           .catch((error) => {
             console.error("Automation error:", error);
-            isAutomating = false;
+            setAutomatingState(false);
           });
       }, waitTime);
     }
@@ -804,7 +888,7 @@ function addAssistantButton() {
 
     btn.addEventListener("click", () => {
       if (isAutomating) {
-        isAutomating = false;
+        setAutomatingState(false);
         chrome.storage.sync.get("aiModel", function (data) {
           const currentModel = data.aiModel || "chatgpt";
           let currentModelName = "ChatGPT";
@@ -823,7 +907,7 @@ function addAssistantButton() {
           "Ready to let the raccoon take over? Click OK to start."
         );
         if (proceed) {
-          isAutomating = true;
+          setAutomatingState(true);
           btn.textContent = "Stop";
           btn.style.background = "#ff4757";
           checkForNextStep();
