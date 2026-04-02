@@ -1,15 +1,18 @@
-let mheTabId = null;
-let aiTabId = null;
+let mheTabId = null; // dis is the brain
+let aiTabId = null; // dis is the ai tab
 let aiType = null;
 let lastActiveTabId = null;
-let processingQuestion = false;
+let processingQuestion = false; // pls dont click too fast
 let mheWindowId = null;
 let aiWindowId = null;
+
+// goodluck debugging this code if window ids broke
 
 chrome.tabs.onActivated.addListener((activeInfo) => {
   lastActiveTabId = activeInfo.tabId;
 });
 
+// we unga bunga retry until it works or crash
 function sendMessageWithRetry(tabId, message, maxAttempts = 3, delay = 1000) {
   return new Promise((resolve, reject) => {
     let attempts = 0;

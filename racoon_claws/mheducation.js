@@ -1,5 +1,5 @@
 let messageListener = null;
-let isAutomating = false;
+let isAutomating = false; // bot goes brrrrrrr
 let lastIncorrectQuestion = null;
 let lastCorrectAnswer = null;
 
@@ -47,6 +47,7 @@ function handleTopicOverview() {
   return false;
 }
 
+// teacher forces us to read, but we click next haha
 function handleForcedLearning() {
   const forcedLearningAlert = document.querySelector(
     ".forced-learning .alert-error"
@@ -104,6 +105,7 @@ function checkForNextStep() {
   }
 }
 
+// steal correct answer if we are wrong
 function extractCorrectAnswer() {
   const container = document.querySelector(".probe-container");
   if (!container) return null;
@@ -314,7 +316,7 @@ function processChatGPTResponse(responseText) {
 
       log("Solving Matching Question...");
 
-      // Strategy: Find DOM elements by Text Content (ignoring CSS classes)
+      // search string in dom like monkey
       const findBestDomMatch = (text) => {
         if (!text) return null;
         const search = text.toLowerCase().trim().substring(0, 20); // First 20 chars
@@ -368,10 +370,9 @@ function processChatGPTResponse(responseText) {
         return null;
       };
 
-      // Enhanced Interaction Simulator v2 (The "Super Drag")
-      // Tries multiple strategies to move the element
       // Ultimate Interaction Simulator v4
       // Includes Native DnD, Mouse, Touch, and DOM Teleportation
+      // goodluck debugging this code, we drag and drop so hard
       const simulateInteraction = (source, target) => {
         if (!source || !target) return;
 

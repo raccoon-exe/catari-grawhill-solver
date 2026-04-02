@@ -4,6 +4,8 @@ let observationStartTime = 0;
 let observationTimeout = null;
 let observer = null;
 
+// gemini very smart but dom very confusing. goodluck debugging this code
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === "receiveQuestion") {
     resetObservation();
@@ -36,6 +38,7 @@ function resetObservation() {
   }
 }
 
+// forcefully put text in the shiny box
 async function insertQuestion(questionData) {
   const { type, question, options, previousCorrection } = questionData;
   let text = `Type: ${type}\nQuestion: ${question}`;
@@ -99,6 +102,7 @@ async function insertQuestion(questionData) {
   });
 }
 
+// we stalk the dom mutations like predator
 function startObserving() {
   observationStartTime = Date.now();
   observationTimeout = setTimeout(() => {

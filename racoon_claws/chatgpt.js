@@ -1,8 +1,10 @@
-let hasResponded = false;
-let messageCountAtQuestion = 0;
+let hasResponded = false; // did bot talk back?
+let messageCountAtQuestion = 0; // how many msgs so far
 let observationStartTime = 0;
 let observationTimeout = null;
 let observer = null;
+
+// goodluck debugging this code, chatgpt ui always change lol
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === "receiveQuestion") {
@@ -38,6 +40,7 @@ function resetObservation() {
   }
 }
 
+// we inject question straight into input box like hacker
 async function insertQuestion(questionData) {
   const { type, question, options, previousCorrection } = questionData;
   let text = `Type: ${type}\nQuestion: ${question}`;
@@ -103,6 +106,7 @@ async function insertQuestion(questionData) {
   });
 }
 
+// stare at the screen until robot replies
 function startObserving() {
   observationStartTime = Date.now();
   observationTimeout = setTimeout(() => {
