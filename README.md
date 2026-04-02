@@ -1,4 +1,4 @@
-# Auto McGraw Hill Solver
+# Catari GrawHill Solver
 
 This extension automates answering questions on McGraw Hill by leveraging AI models. 
 
